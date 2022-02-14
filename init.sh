@@ -14,4 +14,7 @@ fi
 
 mkdir pulumidemo
 
+read -p "Enter the passphrase for pulumi: " passphrase
+export PULUMI_CONFIG_PASSPHRASE=$passphrase
+
 echo "Done! Now go to pulumidemo and continue."
