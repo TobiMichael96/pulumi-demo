@@ -6,18 +6,7 @@ from pulumi_azure_native import authorization
 from pulumi_azure_native import containerservice
 from pulumi_azure_native import managedidentity
 from pulumi_azure_native import resources
-from pulumi_kubernetes import Provider
-from pulumi_kubernetes.apps.v1 import Deployment
-from pulumi_kubernetes.apps.v1 import DeploymentSpecArgs
-from pulumi_kubernetes.core.v1 import ConfigMap
-from pulumi_kubernetes.core.v1 import ContainerArgs
-from pulumi_kubernetes.core.v1 import PodSpecArgs
-from pulumi_kubernetes.core.v1 import PodTemplateSpecArgs
-from pulumi_kubernetes.core.v1 import Service
-from pulumi_kubernetes.core.v1 import ServicePortArgs
-from pulumi_kubernetes.core.v1 import ServiceSpecArgs
-from pulumi_kubernetes.meta.v1 import LabelSelectorArgs
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+import pulumi_kubernetes as k8s
 
 config = pulumi.Config()
 
@@ -81,27 +70,27 @@ kube_creds = pulumi.Output.all(resource_group.name, managed_cluster.name).apply(
                                                                         resource_name=args[1]))
 
 kube_config = kube_creds.kubeconfigs[0].value.apply(lambda enc: base64.b64decode(enc).decode())
-custom_provider = Provider("inflation_provider", kubeconfig=kube_config)
+custom_provider = k8s.Provider("inflation_provider", kubeconfig=kube_config)
 
 app_name = "nginx"
 app_labels = {
     "app": app_name
 }
 
-nginx_config = ConfigMap(app_name, metadata=ObjectMetaArgs(labels=app_labels), data={"index.html": open('index.html').read()}, opts=pulumi.ResourceOptions(provider=custom_provider))
+nginx_config = k8s.core.v1.ConfigMap(app_name, metadata=k8s.meta.v1.ObjectMetaArgs(labels=app_labels), data={"index.html": open('index.html').read()}, opts=pulumi.ResourceOptions(provider=custom_provider))
 
 nginx_config_map_name = nginx_config.metadata.apply(lambda args: args.name)
 
-nginx_deployment = Deployment(
+nginx_deployment = k8s.apps.v1.Deployment(
     app_name,
-    spec=DeploymentSpecArgs(
+    spec=k8s.apps.v1.DeploymentSpecArgs(
         replicas=1,
-        selector=LabelSelectorArgs(match_labels=app_labels),
-        template=PodTemplateSpecArgs(
-            metadata=ObjectMetaArgs(labels=app_labels),
-            spec=PodSpecArgs(
+        selector=k8s.meta.v1.LabelSelectorArgs(match_labels=app_labels),
+        template=k8s.core.v1.PodTemplateSpecArgs(
+            metadata=k8s.meta.v1.ObjectMetaArgs(labels=app_labels),
+            spec=k8s.core.v1.PodSpecArgs(
                 containers=[
-                    ContainerArgs(
+                    k8s.core.v1.ContainerArgs(
                         name=app_name,
                         image="nginx:1.15-alpine",
                         volume_mounts=[
@@ -120,14 +109,14 @@ nginx_deployment = Deployment(
     opts=pulumi.ResourceOptions(provider=custom_provider)
 )
 
-service = Service(
+service = k8s.core.v1.Service(
     app_name,
-    metadata=ObjectMetaArgs(
+    metadata=k8s.meta.v1.ObjectMetaArgs(
         labels=app_labels),
-    spec=ServiceSpecArgs(
+    spec=k8s.core.v1.ServiceSpecArgs(
         selector=app_labels,
         ports=[
-            ServicePortArgs(
+            k8s.core.v1.ServicePortArgs(
                 port=80,
                 target_port=80,
                 protocol="TCP"
