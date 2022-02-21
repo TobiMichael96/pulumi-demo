@@ -127,4 +127,5 @@ service = k8s.core.v1.Service(
     opts=pulumi.ResourceOptions(provider=custom_provider)
 )
 
+pulumi.export("rg_name", resource_group.name)
 pulumi.export("frontend_IP", service.status.apply(lambda s: s.load_balancer.ingress[0].ip))
